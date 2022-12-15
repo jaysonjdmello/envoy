@@ -48,6 +48,8 @@ public:
         resource_decoder_(std::make_shared<TestUtility::TestOpaqueResourceDecoderImpl<
                               envoy::config::endpoint::v3::ClusterLoadAssignment>>("cluster_name")),
         config_validators_(std::make_unique<NiceMock<MockCustomConfigValidators>>()),
+        xds_backoff_strategy_(std::make_unique<JitteredExponentialBackOffStrategy>(
+            Envoy::Config::RETRY_BASE_INTERVALS_MS, Envoy::Config::RETRY_MAX_INTERVAL_MS, random_)),
         should_use_unified_(legacy_or_unified == Envoy::Config::LegacyOrUnified::Unified) {
     node_.set_id("fo0");
     EXPECT_CALL(local_info_, node()).WillRepeatedly(testing::ReturnRef(node_));
@@ -58,13 +60,15 @@ public:
     if (should_use_unified_) {
       mux_ = std::make_shared<Config::XdsMux::GrpcMuxSotw>(
           std::unique_ptr<Grpc::MockAsyncClient>(async_client_), dispatcher_, *method_descriptor_,
-          random_, stats_store_, rate_limit_settings_, local_info_, true,
-          std::move(config_validators_));
+          stats_store_, rate_limit_settings_, local_info_, true, std::move(config_validators_),
+          std::move(xds_backoff_strategy_));
     } else {
       mux_ = std::make_shared<Config::GrpcMuxImpl>(
           local_info_, std::unique_ptr<Grpc::MockAsyncClient>(async_client_), dispatcher_,
-          *method_descriptor_, random_, stats_store_, rate_limit_settings_, true,
-          std::move(config_validators_), /*xds_resources_delegate=*/XdsResourcesDelegateOptRef(),
+          *method_descriptor_, stats_store_, rate_limit_settings_, true,
+          std::move(config_validators_), std::move(xds_backoff_strategy_),
+          /*xds_resources_delegate=*/
+          XdsResourcesDelegateOptRef(),
           /*target_xds_authority=*/"");
     }
     subscription_ = std::make_unique<GrpcSubscriptionImpl>(
@@ -228,6 +232,7 @@ public:
   OpaqueResourceDecoderSharedPtr resource_decoder_;
   NiceMock<LocalInfo::MockLocalInfo> local_info_;
   CustomConfigValidatorsPtr config_validators_;
+  BackOffStrategyPtr xds_backoff_strategy_;
   NiceMock<Grpc::MockAsyncStream> async_stream_;
   GrpcMuxSharedPtr mux_;
   GrpcSubscriptionImplPtr subscription_;

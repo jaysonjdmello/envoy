@@ -43,6 +43,8 @@ public:
         async_client_(new Grpc::MockAsyncClient()),
         resource_decoder_(std::make_shared<TestUtility::TestOpaqueResourceDecoderImpl<
                               envoy::config::endpoint::v3::ClusterLoadAssignment>>("cluster_name")),
+        xds_backoff_strategy_(std::make_unique<JitteredExponentialBackOffStrategy>(
+            Envoy::Config::RETRY_BASE_INTERVALS_MS, Envoy::Config::RETRY_MAX_INTERVAL_MS, random_)),
         should_use_unified_(legacy_or_unified == Envoy::Config::LegacyOrUnified::Unified) {
     node_.set_id("fo0");
     EXPECT_CALL(local_info_, node()).WillRepeatedly(testing::ReturnRef(node_));
@@ -50,13 +52,15 @@ public:
     if (should_use_unified_) {
       xds_context_ = std::make_shared<Config::XdsMux::GrpcMuxDelta>(
           std::unique_ptr<Grpc::MockAsyncClient>(async_client_), dispatcher_, *method_descriptor_,
-          random_, stats_store_, rate_limit_settings_, local_info_, false,
-          std::make_unique<NiceMock<MockCustomConfigValidators>>());
+          stats_store_, rate_limit_settings_, local_info_, false,
+          std::make_unique<NiceMock<MockCustomConfigValidators>>(),
+          std::move(xds_backoff_strategy_));
     } else {
       xds_context_ = std::make_shared<NewGrpcMuxImpl>(
           std::unique_ptr<Grpc::MockAsyncClient>(async_client_), dispatcher_, *method_descriptor_,
-          random_, stats_store_, rate_limit_settings_, local_info_,
-          std::make_unique<NiceMock<MockCustomConfigValidators>>());
+          stats_store_, rate_limit_settings_, local_info_,
+          std::make_unique<NiceMock<MockCustomConfigValidators>>(),
+          std::move(xds_backoff_strategy_));
     }
     subscription_ = std::make_unique<GrpcSubscriptionImpl>(
         xds_context_, callbacks_, resource_decoder_, stats_,
@@ -230,6 +234,7 @@ public:
   envoy::config::core::v3::Node node_;
   NiceMock<Config::MockSubscriptionCallbacks> callbacks_;
   OpaqueResourceDecoderSharedPtr resource_decoder_;
+  BackOffStrategyPtr xds_backoff_strategy_;
   std::queue<std::string> nonce_acks_required_;
   std::queue<std::string> nonce_acks_sent_;
   bool subscription_started_{};
