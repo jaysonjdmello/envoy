@@ -293,6 +293,18 @@ TEST(UtilityTest, PrepareDnsRefreshStrategy) {
   }
 }
 
+TEST(UtilityTest, prepareRetryBackoffStrategy) {
+  NiceMock<Random::MockRandomGenerator> random;
+  {
+    // dns_failure_refresh_rate not set.
+    envoy::config::core::v3::GrpcService grpc_service;
+    BackOffStrategyPtr strategy =
+        Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,
+                                                                                   random);
+    EXPECT_NE(nullptr, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get()));
+  }
+}
+
 // Validate that an opaque config of the wrong type throws during conversion.
 TEST(UtilityTest, AnyWrongType) {
   ProtobufWkt::Duration source_duration;

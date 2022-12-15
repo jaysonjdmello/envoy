@@ -36,9 +36,9 @@ class GrpcMuxImpl : public GrpcMux,
 public:
   GrpcMuxImpl(const LocalInfo::LocalInfo& local_info, Grpc::RawAsyncClientPtr async_client,
               Event::Dispatcher& dispatcher, const Protobuf::MethodDescriptor& service_method,
-              Random::RandomGenerator& random, Stats::Scope& scope,
-              const RateLimitSettings& rate_limit_settings, bool skip_subsequent_node,
-              CustomConfigValidatorsPtr&& config_validators,
+              Stats::Scope& scope, const RateLimitSettings& rate_limit_settings,
+              bool skip_subsequent_node, CustomConfigValidatorsPtr&& config_validators,
+              BackOffStrategyPtr xds_retry_backoff,
               XdsResourcesDelegateOptRef xds_resources_delegate,
               const std::string& target_xds_authority);
 
