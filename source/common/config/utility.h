@@ -544,20 +544,44 @@ public:
   template <typename T>
   static BackOffStrategyPtr prepareRetryBackoffStrategy(const T& config,
                                                         Random::RandomGenerator& random) {
+
+    uint64_t base_interval_ms = RETRY_BASE_INTERVALS_MS;
+    uint64_t max_interval_ms = RETRY_MAX_INTERVAL_MS;
+
     if (config.has_retry_policy()) {
-      uint64_t base_interval_ms = PROTOBUF_GET_MS_OR_DEFAULT(
-          config.retry_policy().retry_back_off(), base_interval, RETRY_BASE_INTERVALS_MS);
-      uint64_t max_interval_ms = PROTOBUF_GET_MS_OR_DEFAULT(config.retry_policy().retry_back_off(),
-                                                            max_interval, RETRY_MAX_INTERVAL_MS);
-      if (max_interval_ms < base_interval_ms) {
-        ExceptionUtil::throwEnvoyException("Retry Backoff max_interval must be greater than"
-                                           "or equal to the base_interval");
+      if (config.retry_policy().has_retry_back_off()) {
+        base_interval_ms =
+            PROTOBUF_GET_MS_REQUIRED(config.retry_policy().retry_back_off(), base_interval);
+
+        if (base_interval_ms > RETRY_MAX_INTERVAL_MS) {
+          ExceptionUtil::throwEnvoyException(
+              fmt::format("Provided Retry Backoff base_interval {} must be less than or equal to "
+                          "maximum interval of {}",
+                          base_interval_ms, RETRY_MAX_INTERVAL_MS));
+        }
+
+        max_interval_ms = PROTOBUF_GET_MS_OR_DEFAULT(config.retry_policy().retry_back_off(),
+                                                     max_interval, base_interval_ms * 10);
+
+        if (max_interval_ms > RETRY_MAX_INTERVAL_MS) {
+          const std::string& warning =
+              fmt::format("max_interval_ms {} greater than Maximum Interval supported {}. Will set "
+                          "max_interval_ms to {}",
+                          max_interval_ms, RETRY_MAX_INTERVAL_MS, RETRY_MAX_INTERVAL_MS);
+          ENVOY_LOG_MISC(warn, warning);
+          max_interval_ms = RETRY_MAX_INTERVAL_MS;
+        }
+
+        if (max_interval_ms < base_interval_ms) {
+          ExceptionUtil::throwEnvoyException(fmt::format("Retry Backoff max_interval {} must be "
+                                                         "greater than"
+                                                         "or equal to the base_interval {}",
+                                                         max_interval_ms, base_interval_ms));
+        }
       }
-      return std::make_unique<JitteredExponentialBackOffStrategy>(base_interval_ms, max_interval_ms,
-                                                                  random);
     }
-    return std::make_unique<JitteredExponentialBackOffStrategy>(RETRY_BASE_INTERVALS_MS,
-                                                                RETRY_MAX_INTERVAL_MS, random);
+    return std::make_unique<JitteredExponentialBackOffStrategy>(base_interval_ms, max_interval_ms,
+                                                                random);
   }
 };
 

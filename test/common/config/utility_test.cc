@@ -293,7 +293,7 @@ TEST(UtilityTest, PrepareDnsRefreshStrategy) {
   }
 }
 
-TEST(UtilityTest, prepareRetryBackoffStrategy) {
+TEST(UtilityTest, prepareRetryBackoffStrategyDefaultValues) {
   NiceMock<Random::MockRandomGenerator> random;
   {
     // dns_failure_refresh_rate not set.
@@ -302,6 +302,95 @@ TEST(UtilityTest, prepareRetryBackoffStrategy) {
         Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,
                                                                                    random);
     EXPECT_NE(nullptr, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get()));
+
+    EXPECT_EQ(true, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())
+                        ->isOverTimeLimit(Envoy::Config::RETRY_MAX_INTERVAL_MS + 1));
+  }
+}
+
+TEST(UtilityTest, prepareRetryBackoffStrategyCustomValues) {
+  NiceMock<Random::MockRandomGenerator> random;
+  {
+    // set in-range values for both base and max interval
+    {
+      envoy::config::core::v3::GrpcService grpc_service;
+
+      grpc_service.mutable_retry_policy()
+          ->mutable_retry_back_off()
+          ->mutable_base_interval()
+          ->set_seconds(5);
+      grpc_service.mutable_retry_policy()
+          ->mutable_retry_back_off()
+          ->mutable_max_interval()
+          ->set_seconds(20);
+
+      BackOffStrategyPtr strategy =
+          Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,
+                                                                                     random);
+
+      // provided time limit (300ms) is less than max time limit (20*1000 ms)
+      EXPECT_EQ(
+          false,
+          dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())->isOverTimeLimit(300));
+
+      // provided time limit (30000ms) is over max time limit (20*1000 ms)
+      EXPECT_EQ(true, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())
+                          ->isOverTimeLimit(30000));
+    }
+
+    // set max_interval greater than Envoy::Config::RETRY_MAX_INTERVAL_MS
+    {
+      envoy::config::core::v3::GrpcService grpc_service;
+
+      grpc_service.mutable_retry_policy()
+          ->mutable_retry_back_off()
+          ->mutable_base_interval()
+          ->set_seconds(5);
+
+      grpc_service.mutable_retry_policy()
+          ->mutable_retry_back_off()
+          ->mutable_max_interval()
+          ->set_seconds(Envoy::Config::RETRY_MAX_INTERVAL_MS / 1000 + 1);
+
+      BackOffStrategyPtr strategy =
+          Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,
+                                                                                     random);
+
+      // provided time limit (Envoy::Config::RETRY_MAX_INTERVAL_MS + 1) ms is over max time
+      // limit (Envoy::Config::RETRY_MAX_INTERVAL_MS) ms
+      EXPECT_EQ(true, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())
+                          ->isOverTimeLimit(Envoy::Config::RETRY_MAX_INTERVAL_MS + 1));
+    }
+
+    // set base_interval > Envoy::Config::RETRY_MAX_INTERVAL_MS
+    {
+      envoy::config::core::v3::GrpcService grpc_service;
+
+      grpc_service.mutable_retry_policy()
+          ->mutable_retry_back_off()
+          ->mutable_base_interval()
+          ->set_seconds(Envoy::Config::RETRY_MAX_INTERVAL_MS + 1);
+
+      EXPECT_ANY_THROW(Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(
+          grpc_service, random));
+    }
+
+    // set max_interval > base_interval
+    {
+      envoy::config::core::v3::GrpcService grpc_service;
+
+      grpc_service.mutable_retry_policy()
+          ->mutable_retry_back_off()
+          ->mutable_base_interval()
+          ->set_seconds(10);
+      grpc_service.mutable_retry_policy()
+          ->mutable_retry_back_off()
+          ->mutable_max_interval()
+          ->set_seconds(5);
+
+      EXPECT_ANY_THROW(Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(
+          grpc_service, random));
+    }
   }
 }
 

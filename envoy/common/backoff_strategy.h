@@ -35,7 +35,7 @@ public:
    * @param interval time interval to be checked.
    * @return returns true if interval is greater than the maximum time interval
    */
-  virtual bool isOverTimeLimit(uint64_t interval) PURE;
+  virtual bool isOverTimeLimit(uint64_t interval_ms) PURE;
 };
 
 using BackOffStrategyPtr = std::unique_ptr<BackOffStrategy>;

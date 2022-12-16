@@ -288,7 +288,10 @@ message GrpcService {
   // request.
   google.protobuf.Duration timeout = 3;
 
-  // Indicates the retry policy (backoff strategy specifically) for re-establishing the gRPC channel
+  // Indicates the retry policy (backoff strategy) for re-establishing the gRPC channel
+  // base interval must be greater than or equal to 1000 ms.
+  // If max interval is not provided, it will be set to ten times the base interval.
+  // max interval must be greater than base interval and is limited to 30 seconds.
   RetryPolicy retry_policy = 6;
 
   // Additional metadata to include in streams initiated to the GrpcService. This can be used for
