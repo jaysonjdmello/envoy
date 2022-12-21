@@ -303,89 +303,79 @@ TEST(UtilityTest, prepareRetryBackoffStrategyDefaultValues) {
     EXPECT_NE(nullptr, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get()));
 
     EXPECT_EQ(true, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())
-                        ->isOverTimeLimit(Envoy::Config::RETRY_MAX_INTERVAL_MS + 1));
+                        ->isOverTimeLimit(Envoy::Config::RetryMaxIntervalMs + 1));
   }
 }
 
 TEST(UtilityTest, prepareRetryBackoffStrategyCustomValues) {
   NiceMock<Random::MockRandomGenerator> random;
   {
-    // set in-range values for both base and max interval
+    // set custom values for both base and max interval
     {
       envoy::config::core::v3::GrpcService grpc_service;
+
+      uint64_t test_base_interval_ms = 5000;
+      uint64_t test_max_interval_ms = 20000;
 
       grpc_service.mutable_retry_policy()
           ->mutable_retry_back_off()
           ->mutable_base_interval()
-          ->set_seconds(5);
+          ->set_seconds(test_base_interval_ms / 1000);
       grpc_service.mutable_retry_policy()
           ->mutable_retry_back_off()
           ->mutable_max_interval()
-          ->set_seconds(20);
+          ->set_seconds(test_max_interval_ms / 1000);
 
       BackOffStrategyPtr strategy =
           Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,
                                                                                      random);
 
-      // provided time limit (300ms) is less than max time limit (20*1000 ms)
-      EXPECT_EQ(
-          false,
-          dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())->isOverTimeLimit(300));
+      // provided time limit is equal to max time limit
+      EXPECT_EQ(false, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())
+                           ->isOverTimeLimit(test_max_interval_ms));
 
-      // provided time limit (30000ms) is over max time limit (20*1000 ms)
+      // provided time limit is over max time limit
       EXPECT_EQ(true, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())
-                          ->isOverTimeLimit(30000));
+                          ->isOverTimeLimit(test_max_interval_ms + 1));
     }
 
-    // set max_interval greater than Envoy::Config::RETRY_MAX_INTERVAL_MS
+    // only set base_interval
     {
       envoy::config::core::v3::GrpcService grpc_service;
+
+      uint64_t test_base_interval_ms = 5000;
 
       grpc_service.mutable_retry_policy()
           ->mutable_retry_back_off()
           ->mutable_base_interval()
-          ->set_seconds(5);
-
-      grpc_service.mutable_retry_policy()
-          ->mutable_retry_back_off()
-          ->mutable_max_interval()
-          ->set_seconds(Envoy::Config::RETRY_MAX_INTERVAL_MS / 1000 + 1);
+          ->set_seconds(test_base_interval_ms / 1000);
 
       BackOffStrategyPtr strategy =
           Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,
                                                                                      random);
 
-      // provided time limit (Envoy::Config::RETRY_MAX_INTERVAL_MS + 1) ms is over max time
-      // limit (Envoy::Config::RETRY_MAX_INTERVAL_MS) ms
+      // max_interval should be less than or equal test_base_interval * 10
+      EXPECT_EQ(false, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())
+                           ->isOverTimeLimit(test_base_interval_ms * 10));
       EXPECT_EQ(true, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())
-                          ->isOverTimeLimit(Envoy::Config::RETRY_MAX_INTERVAL_MS + 1));
-    }
-
-    // set base_interval > Envoy::Config::RETRY_MAX_INTERVAL_MS
-    {
-      envoy::config::core::v3::GrpcService grpc_service;
-
-      grpc_service.mutable_retry_policy()
-          ->mutable_retry_back_off()
-          ->mutable_base_interval()
-          ->set_seconds(Envoy::Config::RETRY_MAX_INTERVAL_MS + 1);
-
-      EXPECT_ANY_THROW(Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(
-          grpc_service, random));
+                          ->isOverTimeLimit(test_base_interval_ms * 10 + 1));
     }
 
     // set max_interval > base_interval
     {
       envoy::config::core::v3::GrpcService grpc_service;
 
+      uint64_t test_base_interval_ms = 10000;
+      uint64_t test_max_interval_ms = 5000;
+
       grpc_service.mutable_retry_policy()
           ->mutable_retry_back_off()
           ->mutable_base_interval()
-          ->set_seconds(10);
+          ->set_seconds(test_base_interval_ms);
       grpc_service.mutable_retry_policy()
           ->mutable_retry_back_off()
           ->mutable_max_interval()
-          ->set_seconds(5);
+          ->set_seconds(test_max_interval_ms);
 
       EXPECT_ANY_THROW(Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(
           grpc_service, random));
