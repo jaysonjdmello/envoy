@@ -296,7 +296,6 @@ TEST(UtilityTest, PrepareDnsRefreshStrategy) {
 TEST(UtilityTest, prepareRetryBackoffStrategyDefaultValues) {
   NiceMock<Random::MockRandomGenerator> random;
   {
-    // dns_failure_refresh_rate not set.
     envoy::config::core::v3::GrpcService grpc_service;
     BackOffStrategyPtr strategy =
         Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,

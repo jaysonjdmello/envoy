@@ -41,8 +41,8 @@ namespace Config {
 
 constexpr absl::string_view Wildcard = "*";
 
-static const uint64_t RETRY_BASE_INTERVALS_MS = 500;
-static const uint64_t RETRY_MAX_INTERVAL_MS = 30000;
+static constexpr uint64_t RetryBaseIntervalMs = 500;
+static constexpr uint64_t RetryMaxIntervalMs = 30000;
 
 /**
  * Constant Api Type Values, used by envoy::config::core::v3::ApiConfigSource.
@@ -545,32 +545,16 @@ public:
   static BackOffStrategyPtr prepareRetryBackoffStrategy(const T& config,
                                                         Random::RandomGenerator& random) {
 
-    uint64_t base_interval_ms = RETRY_BASE_INTERVALS_MS;
-    uint64_t max_interval_ms = RETRY_MAX_INTERVAL_MS;
+    uint64_t base_interval_ms = RetryBaseIntervalMs;
+    uint64_t max_interval_ms = RetryMaxIntervalMs;
 
     if (config.has_retry_policy()) {
       if (config.retry_policy().has_retry_back_off()) {
         base_interval_ms =
             PROTOBUF_GET_MS_REQUIRED(config.retry_policy().retry_back_off(), base_interval);
 
-        if (base_interval_ms > RETRY_MAX_INTERVAL_MS) {
-          ExceptionUtil::throwEnvoyException(
-              fmt::format("Provided Retry Backoff base_interval {} must be less than or equal to "
-                          "maximum interval of {}",
-                          base_interval_ms, RETRY_MAX_INTERVAL_MS));
-        }
-
         max_interval_ms = PROTOBUF_GET_MS_OR_DEFAULT(config.retry_policy().retry_back_off(),
                                                      max_interval, base_interval_ms * 10);
-
-        if (max_interval_ms > RETRY_MAX_INTERVAL_MS) {
-          const std::string& warning =
-              fmt::format("max_interval_ms {} greater than Maximum Interval supported {}. Will set "
-                          "max_interval_ms to {}",
-                          max_interval_ms, RETRY_MAX_INTERVAL_MS, RETRY_MAX_INTERVAL_MS);
-          ENVOY_LOG_MISC(warn, warning);
-          max_interval_ms = RETRY_MAX_INTERVAL_MS;
-        }
 
         if (max_interval_ms < base_interval_ms) {
           ExceptionUtil::throwEnvoyException(fmt::format("Retry Backoff max_interval {} must be "
