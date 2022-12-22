@@ -536,14 +536,14 @@ public:
   }
 
   /**
-   * Prepares the Retry backoff strategy given the configuration containing the retry policy.
+   * Prepares the backoff strategy given the configuration containing the retry policy.
    * @param config configuration that contains the retry policy.
    * @param random random generator.
    * @return BackOffStrategyPtr
    */
   template <typename T>
-  static BackOffStrategyPtr prepareRetryBackoffStrategy(const T& config,
-                                                        Random::RandomGenerator& random) {
+  static BackOffStrategyPtr prepareBackoffStrategy(const T& config,
+                                                   Random::RandomGenerator& random) {
 
     uint64_t base_interval_ms = RetryBaseIntervalMs;
     uint64_t max_interval_ms = RetryMaxIntervalMs;

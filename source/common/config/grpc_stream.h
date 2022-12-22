@@ -26,12 +26,12 @@ class GrpcStream : public Grpc::AsyncStreamCallbacks<ResponseProto>,
 public:
   GrpcStream(GrpcStreamCallbacks<ResponseProto>* callbacks, Grpc::RawAsyncClientPtr async_client,
              const Protobuf::MethodDescriptor& service_method, Event::Dispatcher& dispatcher,
-             Stats::Scope& scope, BackOffStrategyPtr xds_retry_backoff,
+             Stats::Scope& scope, BackOffStrategyPtr backoff_strategy,
              const RateLimitSettings& rate_limit_settings)
       : callbacks_(callbacks), async_client_(std::move(async_client)),
         service_method_(service_method),
         control_plane_stats_(Utility::generateControlPlaneStats(scope)),
-        time_source_(dispatcher.timeSource()), backoff_strategy_(std::move(xds_retry_backoff)),
+        time_source_(dispatcher.timeSource()), backoff_strategy_(std::move(backoff_strategy)),
         rate_limiting_enabled_(rate_limit_settings.enabled_) {
     retry_timer_ = dispatcher.createTimer([this]() -> void { establishNewStream(); });
     if (rate_limiting_enabled_) {

@@ -80,7 +80,7 @@ SubscriptionPtr SubscriptionFactoryImpl::subscriptionFromConfigSource(
       const std::string control_plane_id =
           Utility::getGrpcControlPlane(api_config_source).value_or("");
 
-      BackOffStrategyPtr xds_retry_backoff = Utility::prepareRetryBackoffStrategy(
+      BackOffStrategyPtr backoff_strategy = Utility::prepareBackoffStrategy(
           api_config_source.grpc_services()[0], api_.randomGenerator());
 
       if (Runtime::runtimeFeatureEnabled("envoy.reloadable_features.unified_mux")) {
@@ -91,7 +91,7 @@ SubscriptionPtr SubscriptionFactoryImpl::subscriptionFromConfigSource(
             dispatcher_, sotwGrpcMethod(type_url), scope,
             Utility::parseRateLimitSettings(api_config_source), local_info_,
             api_config_source.set_node_on_first_message_only(), std::move(custom_config_validators),
-            std::move(xds_retry_backoff), xds_resources_delegate_, control_plane_id);
+            std::move(backoff_strategy), xds_resources_delegate_, control_plane_id);
       } else {
         mux = std::make_shared<Config::GrpcMuxImpl>(
             local_info_,
@@ -101,7 +101,7 @@ SubscriptionPtr SubscriptionFactoryImpl::subscriptionFromConfigSource(
             dispatcher_, sotwGrpcMethod(type_url), scope,
             Utility::parseRateLimitSettings(api_config_source),
             api_config_source.set_node_on_first_message_only(), std::move(custom_config_validators),
-            std::move(xds_retry_backoff), xds_resources_delegate_, control_plane_id);
+            std::move(backoff_strategy), xds_resources_delegate_, control_plane_id);
       }
       return std::make_unique<GrpcSubscriptionImpl>(
           std::move(mux), callbacks, resource_decoder, stats, type_url, dispatcher_,
@@ -113,7 +113,7 @@ SubscriptionPtr SubscriptionFactoryImpl::subscriptionFromConfigSource(
       CustomConfigValidatorsPtr custom_config_validators =
           std::make_unique<CustomConfigValidatorsImpl>(validation_visitor_, server_,
                                                        api_config_source.config_validators());
-      BackOffStrategyPtr xds_backoff_strategy = Envoy::Config::Utility::prepareRetryBackoffStrategy(
+      BackOffStrategyPtr backoff_strategy = Envoy::Config::Utility::prepareBackoffStrategy(
           api_config_source.grpc_services()[0], api_.randomGenerator());
       if (Runtime::runtimeFeatureEnabled("envoy.reloadable_features.unified_mux")) {
         mux = std::make_shared<Config::XdsMux::GrpcMuxDelta>(
@@ -123,7 +123,7 @@ SubscriptionPtr SubscriptionFactoryImpl::subscriptionFromConfigSource(
             dispatcher_, deltaGrpcMethod(type_url), scope,
             Utility::parseRateLimitSettings(api_config_source), local_info_,
             api_config_source.set_node_on_first_message_only(), std::move(custom_config_validators),
-            std::move(xds_backoff_strategy));
+            std::move(backoff_strategy));
       } else {
         mux = std::make_shared<Config::NewGrpcMuxImpl>(
             Config::Utility::factoryForGrpcApiConfigSource(cm_.grpcAsyncClientManager(),
@@ -131,7 +131,7 @@ SubscriptionPtr SubscriptionFactoryImpl::subscriptionFromConfigSource(
                 ->createUncachedRawAsyncClient(),
             dispatcher_, deltaGrpcMethod(type_url), scope,
             Utility::parseRateLimitSettings(api_config_source), local_info_,
-            std::move(custom_config_validators), std::move(xds_backoff_strategy));
+            std::move(custom_config_validators), std::move(backoff_strategy));
       }
       return std::make_unique<GrpcSubscriptionImpl>(
           std::move(mux), callbacks, resource_decoder, stats, type_url, dispatcher_,
@@ -181,7 +181,7 @@ SubscriptionPtr SubscriptionFactoryImpl::collectionSubscriptionFromUrl(
       CustomConfigValidatorsPtr custom_config_validators =
           std::make_unique<CustomConfigValidatorsImpl>(validation_visitor_, server_,
                                                        api_config_source.config_validators());
-      BackOffStrategyPtr xds_backoff_strategy = Envoy::Config::Utility::prepareRetryBackoffStrategy(
+      BackOffStrategyPtr backoff_strategy = Envoy::Config::Utility::prepareBackoffStrategy(
           api_config_source.grpc_services()[0], api_.randomGenerator());
 
       SubscriptionOptions options;
@@ -199,7 +199,7 @@ SubscriptionPtr SubscriptionFactoryImpl::collectionSubscriptionFromUrl(
                     ->createUncachedRawAsyncClient(),
                 dispatcher_, deltaGrpcMethod(type_url), scope,
                 Utility::parseRateLimitSettings(api_config_source), local_info_,
-                std::move(custom_config_validators), std::move(xds_backoff_strategy)),
+                std::move(custom_config_validators), std::move(backoff_strategy)),
             callbacks, resource_decoder, stats, dispatcher_,
             Utility::configSourceInitialFetchTimeout(config), false, options);
       }

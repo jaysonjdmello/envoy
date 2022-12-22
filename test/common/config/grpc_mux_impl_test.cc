@@ -50,8 +50,8 @@ public:
   GrpcMuxImplTestBase()
       : async_client_(new Grpc::MockAsyncClient()),
         config_validators_(std::make_unique<NiceMock<MockCustomConfigValidators>>()),
-        xds_backoff_strategy_(std::make_unique<JitteredExponentialBackOffStrategy>(
-            RETRY_BASE_INTERVALS_MS, RETRY_MAX_INTERVAL_MS, random_)),
+        backoff_strategy_(std::make_unique<JitteredExponentialBackOffStrategy>(
+            Envoy::Config::RetryBaseIntervalMs, Envoy::Config::RetryMaxIntervalMs, random_)),
         resource_decoder_(std::make_shared<NiceMock<MockOpaqueResourceDecoder>>()),
         control_plane_connected_state_(
             stats_.gauge("control_plane.connected_state", Stats::Gauge::ImportMode::NeverImport)),
@@ -66,7 +66,7 @@ public:
         *Protobuf::DescriptorPool::generated_pool()->FindMethodByName(
             "envoy.service.discovery.v3.AggregatedDiscoveryService.StreamAggregatedResources"),
         stats_, rate_limit_settings_, true, std::move(config_validators_),
-        std::move(xds_backoff_strategy_),
+        std::move(backoff_strategy_),
         /*xds_resources_delegate=*/XdsResourcesDelegateOptRef(), /*target_xds_authority=*/"");
   }
 
@@ -76,7 +76,7 @@ public:
         *Protobuf::DescriptorPool::generated_pool()->FindMethodByName(
             "envoy.service.discovery.v3.AggregatedDiscoveryService.StreamAggregatedResources"),
         stats_, custom_rate_limit_settings, true, std::move(config_validators_),
-        std::move(xds_backoff_strategy_),
+        std::move(backoff_strategy_),
         /*xds_resources_delegate=*/XdsResourcesDelegateOptRef(), /*target_xds_authority=*/"");
   }
 
@@ -111,7 +111,7 @@ public:
   Grpc::MockAsyncClient* async_client_;
   Grpc::MockAsyncStream async_stream_;
   CustomConfigValidatorsPtr config_validators_;
-  BackOffStrategyPtr xds_backoff_strategy_;
+  BackOffStrategyPtr backoff_strategy_;
   GrpcMuxImplPtr grpc_mux_;
   NiceMock<MockSubscriptionCallbacks> callbacks_;
   OpaqueResourceDecoderSharedPtr resource_decoder_;
@@ -897,8 +897,7 @@ TEST_F(GrpcMuxImplTest, BadLocalInfoEmptyClusterName) {
           *Protobuf::DescriptorPool::generated_pool()->FindMethodByName(
               "envoy.service.discovery.v3.AggregatedDiscoveryService.StreamAggregatedResources"),
           stats_, rate_limit_settings_, true,
-          std::make_unique<NiceMock<MockCustomConfigValidators>>(),
-          std::move(xds_backoff_strategy_),
+          std::make_unique<NiceMock<MockCustomConfigValidators>>(), std::move(backoff_strategy_),
           /*xds_resources_delegate=*/XdsResourcesDelegateOptRef(),
           /*target_xds_authority=*/""),
       EnvoyException,
@@ -914,8 +913,7 @@ TEST_F(GrpcMuxImplTest, BadLocalInfoEmptyNodeName) {
           *Protobuf::DescriptorPool::generated_pool()->FindMethodByName(
               "envoy.service.discovery.v3.AggregatedDiscoveryService.StreamAggregatedResources"),
           stats_, rate_limit_settings_, true,
-          std::make_unique<NiceMock<MockCustomConfigValidators>>(),
-          std::move(xds_backoff_strategy_),
+          std::make_unique<NiceMock<MockCustomConfigValidators>>(), std::move(backoff_strategy_),
           /*xds_resources_delegate=*/XdsResourcesDelegateOptRef(), /*target_xds_authority=*/""),
       EnvoyException,
       "ads: node 'id' and 'cluster' are required. Set it either in 'node' config or via "

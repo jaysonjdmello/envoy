@@ -379,7 +379,7 @@ ClusterManagerImpl::ClusterManagerImpl(
             validation_context.dynamicValidationVisitor(), server,
             dyn_resources.ads_config().config_validators());
 
-    BackOffStrategyPtr xds_backoff_strategy = Envoy::Config::Utility::prepareRetryBackoffStrategy(
+    BackOffStrategyPtr backoff_strategy = Envoy::Config::Utility::prepareBackoffStrategy(
         dyn_resources.ads_config().grpc_services()[0], random_);
 
     if (dyn_resources.ads_config().api_type() ==
@@ -396,7 +396,7 @@ ClusterManagerImpl::ClusterManagerImpl(
                 "DeltaAggregatedResources"),
             stats_, Envoy::Config::Utility::parseRateLimitSettings(dyn_resources.ads_config()),
             local_info, dyn_resources.ads_config().set_node_on_first_message_only(),
-            std::move(custom_config_validators), std::move(xds_backoff_strategy));
+            std::move(custom_config_validators), std::move(backoff_strategy));
       } else {
         ads_mux_ = std::make_shared<Config::NewGrpcMuxImpl>(
             Config::Utility::factoryForGrpcApiConfigSource(*async_client_manager_,
@@ -406,7 +406,7 @@ ClusterManagerImpl::ClusterManagerImpl(
             *Protobuf::DescriptorPool::generated_pool()->FindMethodByName(
                 "envoy.service.discovery.v3.AggregatedDiscoveryService.DeltaAggregatedResources"),
             stats_, Envoy::Config::Utility::parseRateLimitSettings(dyn_resources.ads_config()),
-            local_info, std::move(custom_config_validators), std::move(xds_backoff_strategy));
+            local_info, std::move(custom_config_validators), std::move(backoff_strategy));
       }
     } else {
       Config::Utility::checkTransportVersion(dyn_resources.ads_config());
@@ -425,8 +425,8 @@ ClusterManagerImpl::ClusterManagerImpl(
                 "StreamAggregatedResources"),
             stats_, Envoy::Config::Utility::parseRateLimitSettings(dyn_resources.ads_config()),
             local_info, bootstrap.dynamic_resources().ads_config().set_node_on_first_message_only(),
-            std::move(custom_config_validators), std::move(xds_backoff_strategy),
-            xds_delegate_opt_ref, target_xds_authority);
+            std::move(custom_config_validators), std::move(backoff_strategy), xds_delegate_opt_ref,
+            target_xds_authority);
       } else {
         ads_mux_ = std::make_shared<Config::GrpcMuxImpl>(
             local_info,
@@ -438,8 +438,8 @@ ClusterManagerImpl::ClusterManagerImpl(
                 "envoy.service.discovery.v3.AggregatedDiscoveryService.StreamAggregatedResources"),
             stats_, Envoy::Config::Utility::parseRateLimitSettings(dyn_resources.ads_config()),
             bootstrap.dynamic_resources().ads_config().set_node_on_first_message_only(),
-            std::move(custom_config_validators), std::move(xds_backoff_strategy),
-            xds_delegate_opt_ref, target_xds_authority);
+            std::move(custom_config_validators), std::move(backoff_strategy), xds_delegate_opt_ref,
+            target_xds_authority);
       }
     }
   } else {

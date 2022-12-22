@@ -35,7 +35,7 @@ public:
                  const RateLimitSettings& rate_limit_settings,
                  const LocalInfo::LocalInfo& local_info,
                  CustomConfigValidatorsPtr&& config_validators,
-                 BackOffStrategyPtr xds_retry_backoff);
+                 BackOffStrategyPtr backoff_strategy);
 
   ~NewGrpcMuxImpl() override;
 

@@ -154,14 +154,14 @@ TEST_P(DeltaSubscriptionNoGrpcStreamTest, NoGrpcStream) {
         stats_store, rate_limit_settings, local_info, false,
         std::make_unique<NiceMock<MockCustomConfigValidators>>(),
         std::make_unique<JitteredExponentialBackOffStrategy>(
-            Envoy::Config::RETRY_BASE_INTERVALS_MS, Envoy::Config::RETRY_MAX_INTERVAL_MS, random));
+            Envoy::Config::RetryBaseIntervalMs, Envoy::Config::RetryMaxIntervalMs, random));
   } else {
     xds_context = std::make_shared<NewGrpcMuxImpl>(
         std::unique_ptr<Grpc::MockAsyncClient>(async_client), dispatcher, *method_descriptor,
         stats_store, rate_limit_settings, local_info,
         std::make_unique<NiceMock<MockCustomConfigValidators>>(),
         std::make_unique<JitteredExponentialBackOffStrategy>(
-            Envoy::Config::RETRY_BASE_INTERVALS_MS, Envoy::Config::RETRY_MAX_INTERVAL_MS, random));
+            Envoy::Config::RetryBaseIntervalMs, Envoy::Config::RetryMaxIntervalMs, random));
   }
 
   GrpcSubscriptionImplPtr subscription = std::make_unique<GrpcSubscriptionImpl>(

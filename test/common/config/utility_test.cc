@@ -293,13 +293,12 @@ TEST(UtilityTest, PrepareDnsRefreshStrategy) {
   }
 }
 
-TEST(UtilityTest, prepareRetryBackoffStrategyDefaultValues) {
+TEST(UtilityTest, prepareBackoffStrategyDefaultValues) {
   NiceMock<Random::MockRandomGenerator> random;
   {
     envoy::config::core::v3::GrpcService grpc_service;
     BackOffStrategyPtr strategy =
-        Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,
-                                                                                   random);
+        Utility::prepareBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service, random);
     EXPECT_NE(nullptr, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get()));
 
     EXPECT_EQ(true, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())
@@ -307,7 +306,7 @@ TEST(UtilityTest, prepareRetryBackoffStrategyDefaultValues) {
   }
 }
 
-TEST(UtilityTest, prepareRetryBackoffStrategyCustomValues) {
+TEST(UtilityTest, prepareBackoffStrategyCustomValues) {
   NiceMock<Random::MockRandomGenerator> random;
   {
     // set custom values for both base and max interval
@@ -327,8 +326,8 @@ TEST(UtilityTest, prepareRetryBackoffStrategyCustomValues) {
           ->set_seconds(test_max_interval_ms / 1000);
 
       BackOffStrategyPtr strategy =
-          Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,
-                                                                                     random);
+          Utility::prepareBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,
+                                                                                random);
 
       // provided time limit is equal to max time limit
       EXPECT_EQ(false, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())
@@ -351,8 +350,8 @@ TEST(UtilityTest, prepareRetryBackoffStrategyCustomValues) {
           ->set_seconds(test_base_interval_ms / 1000);
 
       BackOffStrategyPtr strategy =
-          Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,
-                                                                                     random);
+          Utility::prepareBackoffStrategy<envoy::config::core::v3::GrpcService>(grpc_service,
+                                                                                random);
 
       // max_interval should be less than or equal test_base_interval * 10
       EXPECT_EQ(false, dynamic_cast<JitteredExponentialBackOffStrategy*>(strategy.get())
@@ -377,7 +376,7 @@ TEST(UtilityTest, prepareRetryBackoffStrategyCustomValues) {
           ->mutable_max_interval()
           ->set_seconds(test_max_interval_ms);
 
-      EXPECT_ANY_THROW(Utility::prepareRetryBackoffStrategy<envoy::config::core::v3::GrpcService>(
+      EXPECT_ANY_THROW(Utility::prepareBackoffStrategy<envoy::config::core::v3::GrpcService>(
           grpc_service, random));
     }
   }
